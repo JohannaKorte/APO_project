@@ -1,0 +1,12 @@
+Aircraft type,AC1,AC2,AC3,AC4,AC5
+Amount,1,1,2,0,0
+Speed (km/h),550,820,850,870,870
+Seats,45,70,150,320,400
+Average TAT (min),25,35,45,60,60
+Max range (km),1500,3300,6300,12000,15000
+Runway req,1400,1600,1800,2600,3000
+Costs,,,,,
+Weekly lease costs (Û),15000,34000,80000,190000,290000
+Fixed ops. Cost Cx (Û),400,600,1250,2000,3000
+Time cost parameter Ct (Û/hr),750,775,1400,2800,3000
+Fuel cost parameter Cf,1,2,3.5,9,10
