@@ -79,11 +79,11 @@ def hub(airport):
 #______________________________________________________________________________________________________________________
 #PARAMETERS
 num_fleet = 3
-#num_fleet = 2
-#TODO CHANGE TO LEN(FLEET) WHEN CONSIDERING MORE TYPES
-nodes = 20 #TODO CHANGE TO ALL DESTINATIONS
-#nodes = 2
+nodes = 20
 BT = 10
+destinations_by_index = ['London','Paris','Amsterdam','Frankfurt','Madrid','Barcelona','Munich','Rome','Dublin',
+                         'Stockholm','Lisbon','Berlin','Helsinki','Warsaw','Edinburgh','Bucharest','Heraklion',
+                         'Reykjavik','Palermo','Madeira','New York','Atlanta','Los Angeles','Chicago']
 #______________________________________________________________________________________________________________________
 
 #make new cplex problem and define as maximization problem
@@ -287,7 +287,7 @@ print(problem.solution.get_values())
 #     print k, aircraft_dict['Amount'][k], total_flights, total_operating_hours
 
 
-#TODO: Total flows per combination
+#Total flows per combination
 for i in range(nodes):
     for j in range(nodes):
         total_flow_pair = 0
@@ -296,6 +296,42 @@ for i in range(nodes):
         if total_flow_pair != 0:
             print i,",",j,",",total_flow_pair
 
-print "objective value:"
-print problem.solution.get_objective_value()
 
+#objective value
+solution = problem.solution.get_values()
+print "objective value minus lease:"
+lease_cost = 0
+for index, ac in enumerate(aircraft_dict['Amount']):
+    lease_cost += ac * aircraft_dict['Lease'][index]
+
+print problem.solution.get_objective_value() - lease_cost
+print "lease cost: %s" % lease_cost
+
+# Check revenue and cost values
+revenue = 0
+cost = 0
+for i in range(nodes):
+    for j in range(nodes):
+        revenue += solution[index_finder('x',i,j)] * distance[i][j] * yield_matrix[i][j]
+        revenue += solution[index_finder('w',i,j)] * distance[i][j] * yield_matrix[i][j]
+        for k in range(num_fleet):
+            cost += solution[index_finder('z',i,j,k)] * total_operating_cost(i,j,k)
+cost += lease_cost
+
+print "yield is %s" % str(revenue)
+print "cost (including lease) is %s" % str(cost)
+
+# def print_tables():
+#     print 'from, to, x, w, z AC1, z AC2, z AC3'
+#     for i in range(nodes):
+#         for j in range(nodes):
+#             solution = problem.solution.get_values()
+#             x_value = solution[index_finder('x',i,j)]
+#             w_value = solution[index_finder('w',i,j)]
+#             z_value_0 = solution[index_finder('z',i,j,0)]
+#             z_value_1 = solution[index_finder('z',i,j,1)]
+#             z_value_2 = solution[index_finder('z',i,j,2)]
+#             if x_value or w_value or z_value_0 or z_value_1 or z_value_2 != 0:
+#                 print "%s , %s, %s, %s, %s, %s, %s" % (destinations_by_index[i], destinations_by_index[j], str(x_value),str(w_value),str(z_value_0),str(z_value_1),str(z_value_2))
+#
+# print_tables()
