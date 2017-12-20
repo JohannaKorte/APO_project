@@ -397,6 +397,10 @@ problem.write("Problem2.lp")
 print problem.solution.get_status()
 solution = problem.solution.get_values()
 
+#Save solution for use in problem 3
+solution_frequencies = solution[index_finder('z',0,0,0):ac_index_finder('ac',0)]
+np.save('frequencies_prob2',solution_frequencies)
+
 #____________________________________KPI_______________________________________________________________________
 # for index, variable in enumerate(solution):
 #     if variable != 0:
