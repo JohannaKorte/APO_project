@@ -248,7 +248,7 @@ solution = problem.solution.get_values()
 #     if variable != 0:
 #         print dv_names[index], variable
 
-def kpi(solution, prob, nodes, num_fleet):
+def kpi(solution, nodes, num_fleet):
     # Initialization
     cost = 0
     lease_cost = 0
@@ -328,5 +328,5 @@ def kpi(solution, prob, nodes, num_fleet):
     print "Total flow:                      %s" % (total_flow)
     print "Total flights:                   %s" % (total_flights)
 
-print kpi(solution,1.1,20,3)
+print kpi(solution,20,3)
 
