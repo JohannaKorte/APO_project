@@ -302,7 +302,6 @@ for index, variable in enumerate(solution):
 
 def kpi(solution, prob, nodes, num_fleet):
     # Initialization
-    # Initialization
     cost = 0
     lease_cost = 0
     revenue = 0
