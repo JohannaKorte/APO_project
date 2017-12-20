@@ -290,7 +290,7 @@ problem.linear_constraints.add(lin_expr = constraints,
 problem.parameters.timelimit.set(60.0)
 
 problem.solve()
-problem.write("test.lp")
+problem.write("problem1_2.lp")
 print problem.solution.get_status()
 
 solution = problem.solution.get_values()
