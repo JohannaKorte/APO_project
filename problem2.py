@@ -390,16 +390,27 @@ problem.linear_constraints.add(lin_expr = constraints,
                                rhs = rhs,
                                names = constraint_names)
 
-problem.parameters.timelimit.set(60.0)
+problem.parameters.timelimit.set(120.0)
 
 problem.solve()
 problem.write("Problem2.lp")
 print problem.solution.get_status()
 solution = problem.solution.get_values()
+np.save('solution_prob2', solution)
 
 #Save solution for use in problem 3
-solution_frequencies = solution[index_finder('z',0,0,0):ac_index_finder('ac',0)]
-np.save('frequencies_prob2',solution_frequencies)
+frequencies = []
+for i in range(nodes):
+    destinations = []
+    for j in range(nodes):
+        total_freq = 0
+        for k in range(num_fleet):
+            total_freq += solution[index_finder('z',i,j,k)]
+        destinations.append(total_freq)
+    frequencies.append(destinations)
+np.save('frequencies_prob2',frequencies)
+print frequencies
+print len(frequencies)
 
 #____________________________________KPI_______________________________________________________________________
 # for index, variable in enumerate(solution):
@@ -459,7 +470,7 @@ def kpi(solution, prob, nodes, num_fleet):
 
     #RASK
     rask_1 = revenue / ask
-    rask_2 = (revenue ) / ask
+    rask_2 = (revenue + subsidy_total) / ask
 
     #CASK
     cask = (cost + lease_cost + acquisition_fees + termination_fees) / ask
@@ -475,7 +486,7 @@ def kpi(solution, prob, nodes, num_fleet):
     av_lf = total_flow / total_seats
 
     #Print results
-    print "Revenue (incl subsidy):          %s" % revenue
+    print "Revenue (incl subsidy):          %s" % (revenue + subsidy_total)
     print "Total subsidies:                 %s" % subsidy_total
     print "Cost (incl lease and fees):      %s" % (cost + lease_cost + acquisition_fees + termination_fees)
     print "Lease cost:                      %s" % lease_cost
