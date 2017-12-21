@@ -62,43 +62,54 @@ airport_dict = dict_to_float(read_aircraft_data(airport_data_file))
 def market_share(frequency,i,j):
     """given OD pair, returns market share factor to multiply demand with"""
     #get direct frequencies
-    f_dir = frequency[i][j]
-    f_swiss_dir = swiss_frequency[i][j]
+    if i != j:
+        f_dir = frequency[i][j]
+        f_swiss_dir = swiss_frequency[i][j]
+        a=0
+        b=0
+        fs1=0
+        fs2=0
+        #Both fly direct
+        if f_dir > 0 and f_swiss_dir > 0:
+            #direct competition
+            a,b=1.7,1.7
+            fs1 = f_dir
+            fs2 = f_swiss_dir
+        else:
+            f_swiss_indir = min(swiss_frequency[i][swiss_hub], swiss_frequency[swiss_hub][j])
+            f_indir = min(frequency[i][0],frequency[0][j])
+            if f_dir > 0:
+                # We direct, they indirect
+                if f_swiss_indir > 0:
+                    # competitive advantage
+                    a,b = 1, 1.7
+                    fs1 = f_dir
+                    fs2 = f_swiss_indir
+            if f_swiss_dir > 0:
+                #We indirect, they direct
+                if f_indir > 0:
+                    #competitive disadvantage
+                    a,b=1.7,1
+                    fs1 = f_indir
+                    fs2 = f_swiss_dir
+            if f_dir == 0 and f_swiss_dir == 0:
+                #both not direct
+                if f_indir > 0 and f_swiss_indir > 0:
+                    #both indirect
+                    #direct competition
+                    a,b=1.7,1.7
+                    fs1 = f_swiss_indir
+                    fs2 = f_indir
+        if a == 0 and b == 0:
+            return 1
+            print 'i = %s, j = %s, a = %s , b = %s' %(i,j,a,b)
+        else:
+            #return marketshare
+            print 'i = %s, j=%s, a = %s , b = %s' %(i,j,a,b)
 
-    #Both fly direct
-    if f_dir > 0 and f_swiss_dir > 0:
-        #direct competition
-        a,b=1.7,1.7
+            return (pow(fs1,a)/(pow(fs1,a) + pow(fs2,b)))
     else:
-        f_swiss_indir = min(swiss_frequency[i][swiss_hub], swiss_frequency[swiss_hub][j])
-        f_indir = min(frequency[i][0],frequency[0][j])
-        if f_dir > 0:
-            # We direct, they indirect
-            if f_swiss_indir > 0:
-                # competitive advantage
-                a,b = 1, 1.7
-                fs1 = f_dir
-                fs2 = f_indir
-        if f_swiss_dir > 0:
-            #We indirect, they direct
-            if f_indir > 0:
-                #competitive disadvantage
-                a,b=1.7,1
-                fs1 = f_indir
-                fs2 = f_swiss_dir
-        if f_dir == 0 and f_swiss_dir == 0:
-            #both not direct
-            if f_indir > 0 and f_swiss_indir > 0:
-                #both indirect
-                #direct competition
-                a,b=1.7,1.7
-                fs1 = f_swiss_indir
-                fs2 = f_indir
-    if a == 0 and b == 0:
         return 1
-    else:
-        #return marketshare
-        return (pow(fs1,a)/(pow(fs1,a) + pow(fs2,b)))
 
 def total_operating_cost(i,j,k):
     """Given origin, destination and aircraft, calculates the total operating cost using fixed cost, time based costs
@@ -181,21 +192,26 @@ def ac_index_finder(v, n):
 
 def main(start_frequency, num_iterations):
     frequency = start_frequency
-    i = 0
-    while i < num_iterations:
-        print i
-        reachable_demand = []
+    z = 0
+    reachable_demand = demand
+    while z < num_iterations:
+        print "interation number %s started" %z
         #For all OD pairs:
         for i in range(nodes):
             for j in range(nodes):
                 #calculate market share
                 ms = market_share(frequency,i,j)
                 #update demand
-                reachable_demand[i][j] = demand * ms
+                reachable_demand[i][j] = demand[i][j] * ms
+        print "done running market share for iteration %s" %z
         #Run program iteration, returns frequency
+        print 'start cplex solving for iteration %s' %z
         solution_of_iteration = iteration(reachable_demand)
         frequency = solution_of_iteration[0]
         total_solution = solution_of_iteration[1]
+        print 'frequency and solutions for iteration %s determined' %z
+        print kpi(solution_of_iteration[1],24,5)
+        z += 1
     return total_solution
 # _____________________Variable_Names_____________________________________________________________________________________
 #   dv's: xij, wij, zij_k, ac_k, n_add_k, n_term_k b_k
@@ -278,6 +294,7 @@ for i in range(nodes):
         constraint_senses.append("L")
         rhs.append(0)
         constraint_names.append("capacity_%s%s" % (i, j))
+print 'added first'
 
 # balance between incoming and outgoing flights per node
 for i in range(nodes):
@@ -291,6 +308,7 @@ for i in range(nodes):
         constraint_senses.append('E')
         rhs.append(0)
         constraint_names.append("balance_%s_%s" % (i, k))
+print 'added second'
 
 # aircraft use
 for k in range(num_fleet):
@@ -303,6 +321,7 @@ for k in range(num_fleet):
     constraint_senses.append('L')
     rhs.append(0)
     constraint_names.append("AC_usage_%s" % str(k))
+print 'added third'
 
 # range constraint
 for i in range(nodes):
@@ -317,20 +336,22 @@ for i in range(nodes):
             else:
                 rhs.append(0)
             constraint_names.append("range_%s_%s_%s" % (str(i), str(j), str(k)))
+print 'added 4th'
 
-        # runway constraint
-        for k in range(num_fleet):
-            for i in range(nodes):
-                for j in range(nodes):
-                    c7 = [0] * len(dv_names)
-                    c7[index_finder('z', i, j, k)] = 1
-                    constraints.append([dv_names, c7])
-                    constraint_senses.append('L')
-                    if aircraft_dict['Runway'] <= airport_dict['Runway']:
-                        rhs.append(cplex.infinity)
-                    else:
-                        rhs.append(0)
-                    constraint_names.append("runway_%s_%s_%s" % (str(i), str(j), str(k)))
+# runway constraint
+for k in range(num_fleet):
+    for i in range(nodes):
+        for j in range(nodes):
+            c7 = [0] * len(dv_names)
+            c7[index_finder('z', i, j, k)] = 1
+            constraints.append([dv_names, c7])
+            constraint_senses.append('L')
+            if aircraft_dict['Runway'] <= airport_dict['Runway']:
+                rhs.append(cplex.infinity)
+            else:
+                rhs.append(0)
+            constraint_names.append("runway_%s_%s_%s" % (str(i), str(j), str(k)))
+print 'added 5th '
 
 # no direct flights constraint
 # can only go to US from hub
@@ -348,6 +369,7 @@ for i in range(nodes):
         else:
             rhs.append(cplex.infinity)
         constraint_names.append("no_direct_eu_us_%s_%s" % (str(i), str(j)))
+print 'added 6th'
 
 # subsidy constraints
 # Sum of offered seats to subsidy destinations should be larger or equal to its binary dv * 200
@@ -360,6 +382,7 @@ for s in subsidy_airports:
     constraint_senses.append('G')
     rhs.append(0)
     constraint_names.append("subsidy_hub_%s" % str(s))
+print 'added 7th'
 
 for s in subsidy_airports:
     c10 = [0] * len(dv_names)
@@ -370,6 +393,7 @@ for s in subsidy_airports:
     constraint_senses.append('G')
     rhs.append(0)
     constraint_names.append("subsidy_%s_hub" % str(s))
+print 'added 8th'
 
 #Total AC amount constraint
 #AC_k = initial + n_add - n_term -->
@@ -383,6 +407,7 @@ for k in range(num_fleet):
     constraint_senses.append('E')
     rhs.append(aircraft_dict['Amount'][k])
     constraint_names.append("AC_amount_%s" % str(k))
+print 'added 9th'
 
 #US capacity constraint
 for i in america:
@@ -394,6 +419,7 @@ for i in america:
         constraint_senses.append('L')
         rhs.append(7500)
         constraint_names.append("US_capacity_%s_%s" % (str(i),str(j)))
+print 'added 10th'
 
 #long-haul AC constraint
 for i in range(nodes):
@@ -410,7 +436,9 @@ for i in range(nodes):
             else:
                 rhs.append(0)
             constraint_names.append("Long_haul_%s_%s_%s" % (i,j,k))
+print 'added 11th'
 
+print "created basic constraints"
 #______________________Perform_iteration_+_alter_constraint______________________________________________________________________________
 def iteration(reachable_demand):
     """ Takes demand matrix, outputs [[frequencies],[total solution]]"""
@@ -422,12 +450,14 @@ def iteration(reachable_demand):
 
     problem = cplex.Cplex()
     problem.objective.set_sense(problem.objective.sense.maximize)
+    print "created problem"
     #add variables
     problem.variables.add(obj=objective,
                           lb=lower_bounds,
                           ub=upper_bounds,
                           types=["I"] * len(dv_names),
                           names=dv_names)
+    print "added variables"
     #append altered constraints
     # flow <= reachable_demand
     for i in range(nodes):
@@ -454,13 +484,16 @@ def iteration(reachable_demand):
                 iteration_rhs.append(0)
             iteration_constraint_names.append("transfer_%s_%s" % (i, j))
 
+    print 'created new constraints'
     #add constraints
     problem.linear_constraints.add(lin_expr=iteration_constraints,
                                    senses=iteration_constraint_senses,
                                    rhs=iteration_rhs,
                                    names=iteration_constraint_names)
 
+    print 'added constraints'
     problem.parameters.timelimit.set(120.0)
+    print 'start solving'
     problem.solve()
     print problem.solution.get_status()
     solution = problem.solution.get_values()
@@ -476,3 +509,94 @@ def iteration(reachable_demand):
             destinations.append(total_freq)
         frequencies.append(destinations)
     return [frequencies, solution]
+
+#______________________________________KPI______________________________________________________________________________
+def kpi(solution, nodes, num_fleet):
+    # Initialization
+    cost = 0
+    lease_cost = 0
+    revenue = 0
+    subsidy_total = 0
+    acquisition_fees = 0
+    termination_fees = 0
+    ask = 0
+    rpk = 0
+    total_flights = 0
+    total_seats = 0
+    total_flow = 0
+
+    #Revenue & operational cost
+    for i in range(nodes):
+        for j in range(nodes):
+            revenue += (solution[index_finder('x', i, j)] * distance[i][j] * yield_matrix[i][j])
+            revenue += solution[index_finder('w', i, j)] * distance[i][j] * yield_matrix[i][j]
+            for k in range(num_fleet):
+                cost += solution[index_finder('z', i, j, k)] * total_operating_cost(i, j, k)
+
+    #Add problem specific factors
+    for k in range(num_fleet):
+        lease_cost += solution[ac_index_finder('ac', k)] * aircraft_dict['Lease'][k]
+
+    for ap in subsidy_airports:
+        subsidy_total += solution[binary_index_finder(ap)] * subsidy
+        revenue += solution[binary_index_finder(ap)] * subsidy
+
+    for k in range(num_fleet):
+        acquisition_fees += solution[ac_index_finder('n_add', k)] * adding_cost
+        termination_fees += solution[ac_index_finder('n_term', k)] * terminating_cost
+
+    profit = revenue - cost - lease_cost + subsidy_total - acquisition_fees - termination_fees
+
+    #ASK
+    #frequency * #seats * distance
+    for i in range(nodes):
+        for j in range(nodes):
+            for k in range(num_fleet):
+                ask += solution[index_finder('z',i,j,k)] * distance[i][j] * aircraft_dict['Seats'][k]
+
+    #RPK
+    # flow * distance
+    for i in range(nodes):
+        for j in range(nodes):
+            for k in range(num_fleet):
+                rpk += solution[index_finder('x',i,j,k)] * distance[i][j]
+                rpk += solution[index_finder('w',i,j,k)] * distance[i][j]
+
+    #RASK
+    rask_1 = revenue / ask
+    rask_2 = (revenue + subsidy_total) / ask
+
+    #CASK
+    cask = (cost + lease_cost + acquisition_fees + termination_fees) / ask
+
+    #Load Factor
+    for i in range(nodes):
+        for j in range(nodes):
+            for k in range(num_fleet):
+                total_flights += solution[index_finder('z',i,j,k)]
+                total_seats += solution[index_finder('z',i,j,k)] * aircraft_dict['Seats'][k]
+            total_flow += solution[index_finder('x',i,j)]
+            total_flow += solution[index_finder('w',i,j)]
+    av_lf = total_flow / total_seats
+
+    #Print results
+    print "Revenue (incl subsidy):          %s" % (revenue + subsidy_total)
+    print "Total subsidies:                 %s" % subsidy_total
+    print "Cost (incl lease and fees):      %s" % (cost + lease_cost + acquisition_fees + termination_fees)
+    print "Lease cost:                      %s" % lease_cost
+    print "Acquisition fees:                %s" % acquisition_fees
+    print "Termination fees:                %s" % termination_fees
+    print "Profit:                          %s" % profit
+    print "_________________________________________________________________\n"
+    print "ASK:                             %s" % ask
+    print "RPK:                             %s" % rpk
+    print "RASK (excl. subsidy):            %s" % rask_1
+    print "RASK (incl. subsidy):            %s" % rask_2
+    print "CASK:                            %s" % cask
+    print "Load Factor                      %s" % av_lf
+    print "_________________________________________________________________\n"
+    print "Total seats:                     %s" % total_seats
+    print "Total flow:                      %s" % total_flow
+    print "Total flights:                   %s" % total_flights
+
+print main(initial_freq,5)
