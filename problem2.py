@@ -53,6 +53,7 @@ pso = read_csv(pso_data_file)
 yield_matrix = read_csv(yield_data_file)
 aircraft_dict = dict_to_float(read_aircraft_data(aircraft_data_file))
 airport_dict = dict_to_float(read_aircraft_data(airport_data_file))
+
 #______________________________________________________________________________________________________________________
 # Calculatable variables
 
@@ -301,7 +302,8 @@ for k in range(num_fleet):
             c7[index_finder('z',i,j,k)] = 1
             constraints.append([dv_names,c7])
             constraint_senses.append('L')
-            if aircraft_dict['Runway'] <= airport_dict['Runway']:
+            ##TODO: airport_dict['Runway'] at specific j!!!!!
+            if aircraft_dict['Runway'][k] <= airport_dict['Runway'][j]:
                 rhs.append(cplex.infinity)
             else:
                 rhs.append(0)
@@ -309,21 +311,22 @@ for k in range(num_fleet):
 
 #no direct flights constraint
 #can only go to US from hub
-#TESTED
+#CHANGED
 for i in range(nodes):
     for j in range(nodes):
-        c8 = [0] * len(dv_names)
-        c8[index_finder('x',i,j)] = 1
-        constraints.append([dv_names,c8])
-        constraint_senses.append('L')
-        # from non hub to america not allowed, hub(i) == 1 --> i is non-hub
-        if hub(i) == 1 and j in america:
-            rhs.append(0)
-        elif hub(j) == 1 and i in america:
-            rhs.append(0)
-        else:
-            rhs.append(cplex.infinity)
-        constraint_names.append("no_direct_eu_us_%s_%s" % (str(i),str(j)))
+        for k in range(num_fleet):
+            c8 = [0] * len(dv_names)
+            c8[index_finder('z',i,j,k)] = 1
+            constraints.append([dv_names,c8])
+            constraint_senses.append('L')
+            # from non hub to america not allowed, hub(i) == 1 --> i is non-hub
+            if hub(i) == 1 and j in america:
+                rhs.append(0)
+            elif hub(j) == 1 and i in america:
+                rhs.append(0)
+            else:
+                rhs.append(cplex.infinity)
+            constraint_names.append("no_direct_eu_us_%s_%s_%s" % (str(i),str(j),str(k)))
 
 #subsidy constraints
 #Sum of offered seats to subsidy destinations should be larger or equal to its binary dv * 200
@@ -383,10 +386,12 @@ for j in america:
     constraint_names.append("US_capacity_%s_%s" % (str(i),str(j)))
 
 for i in america:
+    #TODO: Changed c12_2!!
     j = 0
     c12_2 = [0] * len(dv_names)
     for k in range(num_fleet):
-        c12_2[index_finder('z', 0, j, k)] = aircraft_dict['Seats'][k]  * lf[i][j]
+        #c12_2[index_finder('z', 0, j, k)] = aircraft_dict['Seats'][k]  * lf[i][j]
+        c12_2[index_finder('z', i, j, k)] = aircraft_dict['Seats'][k] #* lf[i][j]
     constraints.append([dv_names, c12_2])
     constraint_senses.append('L')
     rhs.append(7500)
@@ -444,92 +449,92 @@ print len(frequencies)
 #     if variable != 0:
 #         print dv_names[index], variable
 
-def kpi(solution, nodes, num_fleet):
-    # Initialization
-    cost = 0
-    lease_cost = 0
-    revenue = 0
-    subsidy_total = 0
-    acquisition_fees = 0
-    termination_fees = 0
-    ask = 0
-    rpk = 0
-    total_flights = 0
-    total_seats = 0
-    total_flow = 0
-
-    #Revenue & operational cost
-    for i in range(nodes):
-        for j in range(nodes):
-            revenue += solution[index_finder('x', i, j)] * distance[i][j] * yield_matrix[i][j]
-            revenue += solution[index_finder('w', i, j)] * distance[i][j] * yield_matrix[i][j]
-            for k in range(num_fleet):
-                cost += solution[index_finder('z', i, j, k)] * total_operating_cost(i, j, k)
-
-    #Add problem specific factors
-    for k in range(num_fleet):
-        lease_cost += solution[ac_index_finder('ac', k)] * aircraft_dict['Lease'][k]
-
-    for ap in subsidy_airports:
-        subsidy_total += solution[binary_index_finder(ap)] * subsidy
-        revenue += solution[binary_index_finder(ap)] * subsidy
-
-    for k in range(num_fleet):
-        acquisition_fees += solution[ac_index_finder('n_add', k)] * adding_cost
-        termination_fees += solution[ac_index_finder('n_term', k)] * terminating_cost
-
-    profit = revenue - cost - lease_cost - acquisition_fees - termination_fees
-
-    #ASK
-    #frequency * #seats * distance
-    for i in range(nodes):
-        for j in range(nodes):
-            for k in range(num_fleet):
-                ask += solution[index_finder('z',i,j,k)] * distance[i][j] * aircraft_dict['Seats'][k]
-
-    #RPK
-    # flow * distance
-    for i in range(nodes):
-        for j in range(nodes):
-            rpk += solution[index_finder('x',i,j)] * distance[i][j]
-            rpk += solution[index_finder('w',i,j)] * distance[i][j]
-
-    #RASK
-    rask_1 = (revenue - subsidy_total) / ask
-    rask_2 = (revenue) / ask
-
-    #CASK
-    cask = (cost + lease_cost + acquisition_fees + termination_fees) / ask
-
-    # Load Factor
-    for i in range(nodes):
-        for j in range(nodes):
-            for k in range(num_fleet):
-                total_flights += solution[index_finder('z', i, j, k)]
-                total_seats += solution[index_finder('z', i, j, k)] * aircraft_dict['Seats'][k]
-            total_flow += solution[index_finder('x', i, j)]
-            total_flow += solution[index_finder('w', i, j)]
-    av_lf = total_flow / total_seats
-
-    #Print results
-    print "Revenue (incl subsidy):          %s" % (revenue + subsidy_total)
-    print "Total subsidies:                 %s" % subsidy_total
-    print "Cost (incl lease and fees):      %s" % (cost + lease_cost + acquisition_fees + termination_fees)
-    print "Lease cost:                      %s" % lease_cost
-    print "Acquisition fees:                %s" % acquisition_fees
-    print "Termination fees:                %s" % termination_fees
-    print "Profit:                          %s" % profit
-    print "_________________________________________________________________\n"
-    print "ASK:                             %s" % ask
-    print "RPK:                             %s" % rpk
-    print "RASK (excl. subsidy):            %s" % rask_1
-    print "RASK (incl. subsidy):            %s" % rask_2
-    print "CASK:                            %s" % cask
-    print "Load Factor                      %s" % av_lf
-    print "_________________________________________________________________\n"
-    print "Total seats:                     %s" % total_seats
-    print "Total flow:                      %s" % total_flow
-    print "Total flights:                   %s" % total_flights
-
-
-print kpi(solution,nodes,num_fleet)
+# def kpi(solution, nodes, num_fleet):
+#     # Initialization
+#     cost = 0
+#     lease_cost = 0
+#     revenue = 0
+#     subsidy_total = 0
+#     acquisition_fees = 0
+#     termination_fees = 0
+#     ask = 0
+#     rpk = 0
+#     total_flights = 0
+#     total_seats = 0
+#     total_flow = 0
+#
+#     #Revenue & operational cost
+#     for i in range(nodes):
+#         for j in range(nodes):
+#             revenue += solution[index_finder('x', i, j)] * distance[i][j] * yield_matrix[i][j]
+#             revenue += solution[index_finder('w', i, j)] * distance[i][j] * yield_matrix[i][j]
+#             for k in range(num_fleet):
+#                 cost += solution[index_finder('z', i, j, k)] * total_operating_cost(i, j, k)
+#
+#     #Add problem specific factors
+#     for k in range(num_fleet):
+#         lease_cost += solution[ac_index_finder('ac', k)] * aircraft_dict['Lease'][k]
+#
+#     for ap in subsidy_airports:
+#         subsidy_total += solution[binary_index_finder(ap)] * subsidy
+#         revenue += solution[binary_index_finder(ap)] * subsidy
+#
+#     for k in range(num_fleet):
+#         acquisition_fees += solution[ac_index_finder('n_add', k)] * adding_cost
+#         termination_fees += solution[ac_index_finder('n_term', k)] * terminating_cost
+#
+#     profit = revenue - cost - lease_cost - acquisition_fees - termination_fees
+#
+#     #ASK
+#     #frequency * #seats * distance
+#     for i in range(nodes):
+#         for j in range(nodes):
+#             for k in range(num_fleet):
+#                 ask += solution[index_finder('z',i,j,k)] * distance[i][j] * aircraft_dict['Seats'][k]
+#
+#     #RPK
+#     # flow * distance
+#     for i in range(nodes):
+#         for j in range(nodes):
+#             rpk += solution[index_finder('x',i,j)] * distance[i][j]
+#             rpk += solution[index_finder('w',i,j)] * distance[i][j]
+#
+#     #RASK
+#     rask_1 = (revenue - subsidy_total) / ask
+#     rask_2 = (revenue) / ask
+#
+#     #CASK
+#     cask = (cost + lease_cost + acquisition_fees + termination_fees) / ask
+#
+#     # Load Factor
+#     for i in range(nodes):
+#         for j in range(nodes):
+#             for k in range(num_fleet):
+#                 total_flights += solution[index_finder('z', i, j, k)]
+#                 total_seats += solution[index_finder('z', i, j, k)] * aircraft_dict['Seats'][k]
+#             total_flow += solution[index_finder('x', i, j)]
+#             total_flow += solution[index_finder('w', i, j)]
+#     av_lf = total_flow / total_seats
+#
+#     #Print results
+#     print "Revenue (incl subsidy):          %s" % (revenue + subsidy_total)
+#     print "Total subsidies:                 %s" % subsidy_total
+#     print "Cost (incl lease and fees):      %s" % (cost + lease_cost + acquisition_fees + termination_fees)
+#     print "Lease cost:                      %s" % lease_cost
+#     print "Acquisition fees:                %s" % acquisition_fees
+#     print "Termination fees:                %s" % termination_fees
+#     print "Profit:                          %s" % profit
+#     print "_________________________________________________________________\n"
+#     print "ASK:                             %s" % ask
+#     print "RPK:                             %s" % rpk
+#     print "RASK (excl. subsidy):            %s" % rask_1
+#     print "RASK (incl. subsidy):            %s" % rask_2
+#     print "CASK:                            %s" % cask
+#     print "Load Factor                      %s" % av_lf
+#     print "_________________________________________________________________\n"
+#     print "Total seats:                     %s" % total_seats
+#     print "Total flow:                      %s" % total_flow
+#     print "Total flights:                   %s" % total_flights
+#
+#
+# print kpi(solution,nodes,num_fleet)

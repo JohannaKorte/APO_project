@@ -192,10 +192,10 @@ def ac_index_finder(v, n):
 
 def main(start_frequency, num_iterations):
     frequency = start_frequency
-    z = 0
+    q = 0
     reachable_demand = demand
-    while z < num_iterations:
-        print "interation number %s started" %z
+    while q < num_iterations:
+        print "interation number %s started" %q
         #For all OD pairs:
         for i in range(nodes):
             for j in range(nodes):
@@ -203,15 +203,15 @@ def main(start_frequency, num_iterations):
                 ms = market_share(frequency,i,j)
                 #update demand
                 reachable_demand[i][j] = demand[i][j] * ms
-        print "done running market share for iteration %s" %z
+        print "done running market share for iteration %s" %q
         #Run program iteration, returns frequency
-        print 'start cplex solving for iteration %s' %z
+        print 'start cplex solving for iteration %s' %q
         solution_of_iteration = iteration(reachable_demand)
         frequency = solution_of_iteration[0]
         total_solution = solution_of_iteration[1]
-        print 'frequency and solutions for iteration %s determined' %z
+        print 'frequency and solutions for iteration %s determined' %q
         print kpi(solution_of_iteration[1],24,5)
-        z += 1
+        q += 1
     return total_solution
 # _____________________Variable_Names_____________________________________________________________________________________
 #   dv's: xij, wij, zij_k, ac_k, n_add_k, n_term_k b_k
@@ -279,6 +279,8 @@ constraints = []
 constraint_senses = []
 rhs = []
 constraint_names = []
+
+#TODO UPDATE USING THE CONSTRAINTS OF 2
 
 #capacity constraint
 for i in range(nodes):
