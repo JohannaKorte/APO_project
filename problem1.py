@@ -30,13 +30,10 @@ def read_csv(filename):
         for row in reader:
             if matrix == []:
                 matrix = [row[1:21]]
-                #matrix = [row[1:]]
             else:
                 matrix = np.append(matrix,[row[1:21]], axis=0)
-                #matrix = np.append(matrix,[row[1:]], axis=0)
     matrix = matrix.astype(float)
     return matrix[:20,:]
-    #return matrix
 
 #read all csv files into matrices
 distance = read_csv(distance_data_file)
@@ -234,7 +231,7 @@ problem.linear_constraints.add(lin_expr = constraints,
                                rhs = rhs,
                                names = constraint_names)
 
-problem.parameters.timelimit.set(60.0)
+problem.parameters.timelimit.set(6000.0)
 
 problem.solve()
 problem.write("problem1_1.lp")
@@ -243,11 +240,7 @@ print(problem.solution.get_values())
 
 solution = problem.solution.get_values()
 
-#___________________________CHECKS________________________________________________________________________________
-# for index, variable in enumerate(problem.solution.get_values()):
-#     if variable != 0:
-#         print dv_names[index], variable
-
+#___________________________KPI_______________________________________________________________________________
 def kpi(solution, nodes, num_fleet):
     # Initialization
     cost = 0
@@ -309,24 +302,47 @@ def kpi(solution, nodes, num_fleet):
     av_lf = total_flow / total_seats
 
     #Print results
-    print "Revenue (incl subsidy):          %s" % (revenue)
-    print "Total subsidies:                 %s" % (subsidy_total)
-    print "Cost (incl lease and fees):      %s" % (cost + lease_cost + acquisition_fees + termination_fees)
-    print "Lease cost:                      %s" % (lease_cost)
-    print "Acquisition fees:                %s" % (acquisition_fees)
-    print "Termination fees:                %s" % (termination_fees)
-    print "Profit:                          %s" % (profit)
+    print "Revenue (incl subsidy):          %s" % revenue
+    print "Total subsidies:                 %s" % subsidy_total
+    print "Cost (incl lease and fees):      %s" % cost + lease_cost + acquisition_fees + termination_fees
+    print "Lease cost:                      %s" % lease_cost
+    print "Acquisition fees:                %s" % acquisition_fees
+    print "Termination fees:                %s" % termination_fees
+    print "Profit:                          %s" % profit
     print "_________________________________________________________________\n"
-    print "ASK:                             %s" % (ask)
-    print "RPK:                             %s" % (rpk)
-    print "RASK (excl. subsidy):            %s" % (rask_1)
-    print "RASK (incl. subsidy):            %s" % (rask_2)
-    print "CASK:                            %s" % (cask)
-    print "Load Factor                      %s" % (av_lf)
+    print "ASK:                             %s" % ask
+    print "RPK:                             %s" % rpk
+    print "RASK (excl. subsidy):            %s" % rask_1
+    print "RASK (incl. subsidy):            %s" % rask_2
+    print "CASK:                            %s" % cask
+    print "Load Factor                      %s" % av_lf
     print "_________________________________________________________________\n"
-    print "Total seats:                     %s" % (total_seats)
-    print "Total flow:                      %s" % (total_flow)
-    print "Total flights:                   %s" % (total_flights)
+    print "Total seats:                     %s" % total_seats
+    print "Total flow:                      %s" % total_flow
+    print "Total flights:                   %s" % total_flights
+    print "_________________________________________________________________\n"
+    print "AC1:                             %s" % aircraft_dict['Amount'][0]
+    print "AC2:                             %s" % aircraft_dict['Amount'][1]
+    print "AC3:                             %s" % aircraft_dict['Amount'][2]
+    print "AC4:                             %s" % aircraft_dict['Amount'][3]
+    print "AC5:                             %s" % aircraft_dict['Amount'][4]
+
+
+def print_tables():
+    print 'source, target, x, w'
+    for i in range(nodes):
+        for j in range(nodes):
+            x_value = solution[index_finder('x', i, j)]
+            w_value = solution[index_finder('w', i, j)]
+            # z_value_0 = solution[index_finder('z',i,j,0)]
+            # z_value_1 = solution[index_finder('z',i,j,1)]
+            # z_value_2 = solution[index_finder('z',i,j,2)]
+            # z_value_3 = solution[index_finder('z',i,j,3)]
+            # z_value_4 = solution[index_finder('z', i, j, 4)]
+            # z_value = z_value_0+z_value_1+z_value_2+z_value_3+z_value_4
+            if x_value or w_value != 0:
+                print "%s , %s, %s, %s" % (i, j, str(x_value), str(w_value))
 
 print kpi(solution,20,3)
+print_tables()
 

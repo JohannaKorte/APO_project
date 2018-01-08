@@ -23,7 +23,6 @@ def read_aircraft_data(filename):
 
 def read_csv(filename):
     """Given a filename, reads the csv file and returns a corresponding matrix"""
-    #TODO: EDIT SUCH THAT READS ALL AIRPORTS, NOT ONLY EUROPEAN ONES: REMOVE COMMENTED LINES
     matrix = []
     with open(filename, 'rU') as csv_file:
         reader = csv.reader(csv_file)
@@ -31,13 +30,10 @@ def read_csv(filename):
         for row in reader:
             if matrix == []:
                 matrix = [row[1:21]]
-                #matrix = [row[1:]]
             else:
                 matrix = np.append(matrix,[row[1:21]], axis=0)
-                #matrix = np.append(matrix,[row[1:]], axis=0)
     matrix = matrix.astype(float)
     return matrix[:20,:]
-    #return matrix
 
 #read all csv files into matrices
 distance = read_csv(distance_data_file)
@@ -95,7 +91,6 @@ adding_cost = 2000
 terminating_cost = 8000
 subsidy = 15000
 #______________________________________________________________________________________________________________________
-
 #make new cplex problem and define as maximization problem
 problem = cplex.Cplex()
 problem.objective.set_sense(problem.objective.sense.maximize)
@@ -146,6 +141,7 @@ def binary_index_finder(n):
     elif n == 16:
         return len(dv_names) - 4
 
+#______________________________________________________________________________________________________________________
 #OBJECTIVE FUNCTION
 objective = [0] * (len(dv_names))
 for dv in ['x', 'w', 'z', 'b']:
@@ -197,7 +193,6 @@ for i in range(nodes):
     for j in range(nodes):
         c2 = [0] * len(dv_names)
         c2[index_finder('w', i, j)] = 1
-        #append constraint to different lists
         constraints.append([dv_names, c2])
         constraint_senses.append("L")
         if i != 0 and j!= 0:
@@ -234,7 +229,6 @@ for i in range(nodes):
         rhs.append(0)
         constraint_names.append("balance_%s_%s" % (i, k))
 
-
 #aircraft use
 for k in range(num_fleet):
     c5 =[0] * len(dv_names)
@@ -261,7 +255,6 @@ for i in range(nodes):
             constraint_names.append("range_%s_%s_%s" % (i,j,k))
 
 #subsidy constraints
-#Sum of offered seats to subsidy destinations should be larger or equal to its binary dv * 200
 for s in subsidy_airports:
     c9 = [0] * len(dv_names)
     for k in range(num_fleet):
@@ -287,7 +280,7 @@ problem.linear_constraints.add(lin_expr = constraints,
                                rhs = rhs,
                                names = constraint_names)
 
-problem.parameters.timelimit.set(60.0)
+problem.parameters.timelimit.set(6000.0)
 
 problem.solve()
 problem.write("problem1_2.lp")
@@ -383,6 +376,27 @@ def kpi(solution, prob, nodes, num_fleet):
     print "Total seats:                     %s" % total_seats
     print "Total flow:                      %s" % total_flow
     print "Total flights:                   %s" % total_flights
+    print "_________________________________________________________________\n"
+    print "AC1:                             %s" % aircraft_dict['Amount'][0]
+    print "AC2:                             %s" % aircraft_dict['Amount'][1]
+    print "AC3:                             %s" % aircraft_dict['Amount'][2]
+    print "AC4:                             %s" % aircraft_dict['Amount'][3]
+    print "AC5:                             %s" % aircraft_dict['Amount'][4]
 
+def print_tables():
+    print 'source, target, x, w'
+    for i in range(nodes):
+        for j in range(nodes):
+            x_value = solution[index_finder('x', i, j)]
+            w_value = solution[index_finder('w', i, j)]
+            # z_value_0 = solution[index_finder('z',i,j,0)]
+            # z_value_1 = solution[index_finder('z',i,j,1)]
+            # z_value_2 = solution[index_finder('z',i,j,2)]
+            # z_value_3 = solution[index_finder('z',i,j,3)]
+            # z_value_4 = solution[index_finder('z', i, j, 4)]
+            # z_value = z_value_0+z_value_1+z_value_2+z_value_3+z_value_4
+            if x_value or w_value != 0:
+                print "%s , %s, %s, %s" % (i, j, str(x_value), str(w_value))
 
 print kpi(solution,1.2,20,3)
+print_tables()

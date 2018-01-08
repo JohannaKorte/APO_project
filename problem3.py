@@ -101,12 +101,11 @@ def market_share(frequency,i,j):
                     fs1 = f_swiss_indir
                     fs2 = f_indir
         if a == 0 and b == 0:
-            return 1
             print 'i = %s, j = %s, a = %s , b = %s' %(i,j,a,b)
+            return 1
         else:
             #return marketshare
             print 'i = %s, j=%s, a = %s , b = %s' %(i,j,a,b)
-
             return (pow(fs1,a)/(pow(fs1,a) + pow(fs2,b)))
     else:
         return 1
@@ -137,8 +136,6 @@ def hub(airport):
         return 0
     else:
         return 1
-
-
 #________________________Parameters_____________________________________________________________________________________
 num_fleet = len(aircraft_dict['Seats'])
 nodes = 24
@@ -182,6 +179,8 @@ def binary_index_finder(n):
         return len(dv_names) - 4
 
 def ac_index_finder(v, n):
+    """Given the aircraft variable name (either 'ac', 'n_add' or 'n_term') and the number of the variable, gives the
+    index of that location in the solution array. """
     if v == 'ac':
         return 2*nodes*nodes + nodes*nodes*num_fleet + n
     elif v == 'n_add':
@@ -189,7 +188,6 @@ def ac_index_finder(v, n):
     elif v == 'n_term':
         return 2*nodes*nodes + nodes*nodes*num_fleet + 2*num_fleet + n
 #_______________________Main____________________________________________________________________________________________
-
 def main(start_frequency, num_iterations):
     frequency = start_frequency
     q = 0
@@ -213,7 +211,7 @@ def main(start_frequency, num_iterations):
         print kpi(solution_of_iteration[1],24,5)
         q += 1
     return total_solution
-# _____________________Variable_Names_____________________________________________________________________________________
+# _____________________Variable_Names___________________________________________________________________________________
 #   dv's: xij, wij, zij_k, ac_k, n_add_k, n_term_k b_k
 #   x_ij of size: nodes*nodes                  -- Direct flow from i to j
 #   w_ij of size: nodes*nodes                  -- Transfer flow from i to j
@@ -274,13 +272,11 @@ lower_bounds = [0] * len(dv_names)
 upper_bounds = [cplex.infinity] * (len(dv_names) - 4) + [1,1,1,1] #binary upperbounds included
 print "Bounds added"
 
-#______________________Constraints_that_stay_the_same_____________________________________________________________________________________
+#______________________Constraints_that_remain_constant_over_iterations_________________________________________________
 constraints = []
 constraint_senses = []
 rhs = []
 constraint_names = []
-
-#TODO UPDATE USING THE CONSTRAINTS OF 2
 
 #capacity constraint
 for i in range(nodes):
@@ -296,7 +292,6 @@ for i in range(nodes):
         constraint_senses.append("L")
         rhs.append(0)
         constraint_names.append("capacity_%s%s" % (i, j))
-print 'added first'
 
 # balance between incoming and outgoing flights per node
 for i in range(nodes):
@@ -310,71 +305,66 @@ for i in range(nodes):
         constraint_senses.append('E')
         rhs.append(0)
         constraint_names.append("balance_%s_%s" % (i, k))
-print 'added second'
 
 # aircraft use
 for k in range(num_fleet):
-    c5 = [0] * len(dv_names)
+    c5 =[0] * len(dv_names)
     for i in range(nodes):
         for j in range(nodes):
-            c5[index_finder('z', i, j, k)] = (distance[i][j] / aircraft_dict['Speed'][k]) + turnaround(j, k)
-            c5[ac_index_finder('ac', k)] = -1 * BT * 7
-    constraints.append([dv_names, c5])
+            c5[index_finder('z',i,j,k)] = (distance[i][j]/aircraft_dict['Speed'][k]) + turnaround(j,k)
+            c5[ac_index_finder('ac',k)] = -1 * BT * 7
+    constraints.append([dv_names,c5])
     constraint_senses.append('L')
     rhs.append(0)
     constraint_names.append("AC_usage_%s" % str(k))
-print 'added third'
 
 # range constraint
 for i in range(nodes):
     for j in range(nodes):
         for k in range(num_fleet):
             c6 = [0] * len(dv_names)
-            c6[index_finder('z', i, j, k)] = 1
+            c6[index_finder('z',i,j,k)] = 1
             constraints.append([dv_names, c6])
             constraint_senses.append('L')
             if distance[i][j] <= aircraft_dict['Range'][k]:
                 rhs.append(cplex.infinity)
             else:
                 rhs.append(0)
-            constraint_names.append("range_%s_%s_%s" % (str(i), str(j), str(k)))
-print 'added 4th'
+            constraint_names.append("range_%s_%s_%s" % (str(i),str(j),str(k)))
 
 # runway constraint
 for k in range(num_fleet):
     for i in range(nodes):
         for j in range(nodes):
             c7 = [0] * len(dv_names)
-            c7[index_finder('z', i, j, k)] = 1
-            constraints.append([dv_names, c7])
+            c7[index_finder('z',i,j,k)] = 1
+            constraints.append([dv_names,c7])
             constraint_senses.append('L')
-            if aircraft_dict['Runway'] <= airport_dict['Runway']:
+            if aircraft_dict['Runway'][k] <= airport_dict['Runway'][j]:
                 rhs.append(cplex.infinity)
             else:
                 rhs.append(0)
-            constraint_names.append("runway_%s_%s_%s" % (str(i), str(j), str(k)))
-print 'added 5th '
+            constraint_names.append("runway_%s_%s_%s" % (str(i),str(j),str(k)))
 
-# no direct flights constraint
-# can only go to US from hub
+#No direct flights to US constraint
+#can only go to US via hub
 for i in range(nodes):
     for j in range(nodes):
-        c8 = [0] * len(dv_names)
-        c8[index_finder('x', i, j)] = 1
-        constraints.append([dv_names, c8])
-        constraint_senses.append('L')
-        # from non hub to america not allowed, hub(i) == 1 --> i is non-hub
-        if hub(i) == 1 and j in america:
-            rhs.append(0)
-        elif hub(j) == 1 and i in america:
-            rhs.append(0)
-        else:
-            rhs.append(cplex.infinity)
-        constraint_names.append("no_direct_eu_us_%s_%s" % (str(i), str(j)))
-print 'added 6th'
+        for k in range(num_fleet):
+            c8 = [0] * len(dv_names)
+            c8[index_finder('z',i,j,k)] = 1
+            constraints.append([dv_names,c8])
+            constraint_senses.append('L')
+            # from non hub to america not allowed, hub(i) == 1 --> i is non-hub
+            if hub(i) == 1 and j in america:
+                rhs.append(0)
+            elif hub(j) == 1 and i in america:
+                rhs.append(0)
+            else:
+                rhs.append(cplex.infinity)
+            constraint_names.append("no_direct_eu_us_%s_%s_%s" % (str(i),str(j),str(k)))
 
-# subsidy constraints
-# Sum of offered seats to subsidy destinations should be larger or equal to its binary dv * 200
+# Subsidy constraints
 for s in subsidy_airports:
     c9 = [0] * len(dv_names)
     for k in range(num_fleet):
@@ -384,7 +374,6 @@ for s in subsidy_airports:
     constraint_senses.append('G')
     rhs.append(0)
     constraint_names.append("subsidy_hub_%s" % str(s))
-print 'added 7th'
 
 for s in subsidy_airports:
     c10 = [0] * len(dv_names)
@@ -395,7 +384,6 @@ for s in subsidy_airports:
     constraint_senses.append('G')
     rhs.append(0)
     constraint_names.append("subsidy_%s_hub" % str(s))
-print 'added 8th'
 
 #Total AC amount constraint
 #AC_k = initial + n_add - n_term -->
@@ -409,19 +397,27 @@ for k in range(num_fleet):
     constraint_senses.append('E')
     rhs.append(aircraft_dict['Amount'][k])
     constraint_names.append("AC_amount_%s" % str(k))
-print 'added 9th'
 
 #US capacity constraint
+for j in america:
+    i = 0
+    c12_1 = [0] * len(dv_names)
+    for k in range(num_fleet):
+        c12_1[index_finder('z',i,j,k)] = aircraft_dict['Seats'][k]
+    constraints.append([dv_names,c12_1])
+    constraint_senses.append('L')
+    rhs.append(7500)
+    constraint_names.append("US_capacity_%s_%s" % (str(i),str(j)))
+
 for i in america:
-    for j in america:
-        c12 = [0] * len(dv_names)
-        for k in range(num_fleet):
-            c12[index_finder('z',i,j,k)] = aircraft_dict['Seats'][k] * lf[i][j]
-        constraints.append([dv_names,c12])
-        constraint_senses.append('L')
-        rhs.append(7500)
-        constraint_names.append("US_capacity_%s_%s" % (str(i),str(j)))
-print 'added 10th'
+    j = 0
+    c12_2 = [0] * len(dv_names)
+    for k in range(num_fleet):
+        c12_2[index_finder('z', i, j, k)] = aircraft_dict['Seats'][k]
+    constraints.append([dv_names, c12_2])
+    constraint_senses.append('L')
+    rhs.append(7500)
+    constraint_names.append("US_capacity_%s_%s" % (str(i), str(j)))
 
 #long-haul AC constraint
 for i in range(nodes):
@@ -438,9 +434,9 @@ for i in range(nodes):
             else:
                 rhs.append(0)
             constraint_names.append("Long_haul_%s_%s_%s" % (i,j,k))
-print 'added 11th'
 
-print "created basic constraints"
+print "created constant constraints"
+
 #______________________Perform_iteration_+_alter_constraint______________________________________________________________________________
 def iteration(reachable_demand):
     """ Takes demand matrix, outputs [[frequencies],[total solution]]"""
@@ -472,7 +468,7 @@ def iteration(reachable_demand):
             iteration_rhs.append(reachable_demand[i][j])
             iteration_constraint_names.append("flow_%s_%s" % (i, j))
 
-    # transfer only if hub is not origin or destination
+    #Transfer constraint
     for i in range(nodes):
         for j in range(nodes):
             c2 = [0] * len(dv_names)
@@ -498,6 +494,7 @@ def iteration(reachable_demand):
     print 'start solving'
     problem.solve()
     print problem.solution.get_status()
+    global solution
     solution = problem.solution.get_values()
 
     solution_frequencies = solution[index_finder('z', 0, 0, 0):ac_index_finder('ac', 0)]
@@ -600,5 +597,28 @@ def kpi(solution, nodes, num_fleet):
     print "Total seats:                     %s" % total_seats
     print "Total flow:                      %s" % total_flow
     print "Total flights:                   %s" % total_flights
+    print "_________________________________________________________________\n"
+    print "AC1:                             %s" % solution[ac_index_finder('ac', 0)]
+    print "AC2:                             %s" % solution[ac_index_finder('ac', 1)]
+    print "AC3:                             %s" % solution[ac_index_finder('ac', 2)]
+    print "AC4:                             %s" % solution[ac_index_finder('ac', 3)]
+    print "AC5:                             %s" % solution[ac_index_finder('ac', 4)]
+
+
+def print_tables():
+    print 'source, target, x, w'
+    for i in range(nodes):
+        for j in range(nodes):
+            x_value = solution[index_finder('x', i, j)]
+            w_value = solution[index_finder('w', i, j)]
+            # z_value_0 = solution[index_finder('z',i,j,0)]
+            # z_value_1 = solution[index_finder('z',i,j,1)]
+            # z_value_2 = solution[index_finder('z',i,j,2)]
+            # z_value_3 = solution[index_finder('z',i,j,3)]
+            # z_value_4 = solution[index_finder('z', i, j, 4)]
+            # z_value = z_value_0+z_value_1+z_value_2+z_value_3+z_value_4
+            if x_value or w_value != 0:
+                print "%s , %s, %s, %s" % (i, j, str(x_value), str(w_value))
 
 print main(initial_freq,5)
+print_tables()
