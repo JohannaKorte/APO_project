@@ -118,6 +118,8 @@ def index_finder(v,origin,destination,k=0):
         print('wrong variable name in index finder')
 
 #OBJECTIVE FUNCTION
+#Number of aircraft is not added as decision variable, thus to arrive at the actual objective value including the
+#lease costs, this needs to be subtracted after running.
 objective = [0] * (len(dv_names))
 for dv in ['x', 'w', 'z']:
     for i in range(nodes):
@@ -311,7 +313,7 @@ def kpi(solution, nodes, num_fleet):
     print "Profit:                          %s" % profit
     print "_________________________________________________________________\n"
     print "ASK:                             %s" % ask
-    print "RPK:                             %s" % rpk
+    print "RPK:                             %f" % rpk
     print "RASK (excl. subsidy):            %s" % rask_1
     print "RASK (incl. subsidy):            %s" % rask_2
     print "CASK:                            %s" % cask
