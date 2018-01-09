@@ -304,30 +304,30 @@ def kpi(solution, nodes, num_fleet):
     av_lf = total_flow / total_seats
 
     #Print results
-    print "Revenue (incl subsidy):          %s" % revenue
-    print "Total subsidies:                 %s" % subsidy_total
-    print "Cost (incl lease and fees):      %s" % cost + lease_cost + acquisition_fees + termination_fees
-    print "Lease cost:                      %s" % lease_cost
-    print "Acquisition fees:                %s" % acquisition_fees
-    print "Termination fees:                %s" % termination_fees
-    print "Profit:                          %s" % profit
+    print "Revenue (incl subsidy):          %s" % str(revenue)
+    print "Total subsidies:                 %s" % str(subsidy_total)
+    print "Cost (incl lease and fees):      %s" % str(cost + lease_cost + acquisition_fees + termination_fees)
+    print "Lease cost:                      %s" % str(lease_cost)
+    print "Acquisition fees:                %s" % str(acquisition_fees)
+    print "Termination fees:                %s" % str(termination_fees)
+    print "Profit:                          %s" % str(profit)
     print "_________________________________________________________________\n"
-    print "ASK:                             %s" % ask
-    print "RPK:                             %f" % rpk
-    print "RASK (excl. subsidy):            %s" % rask_1
-    print "RASK (incl. subsidy):            %s" % rask_2
-    print "CASK:                            %s" % cask
-    print "Load Factor                      %s" % av_lf
+    print "ASK:                             %s" % str(ask)
+    print "RPK:                             %s" % str(rpk)
+    print "RASK (excl. subsidy):            %s" % str(rask_1)
+    print "RASK (incl. subsidy):            %s" % str(rask_2)
+    print "CASK:                            %s" % str(cask)
+    print "Load Factor                      %s" % str(av_lf)
     print "_________________________________________________________________\n"
-    print "Total seats:                     %s" % total_seats
-    print "Total flow:                      %s" % total_flow
-    print "Total flights:                   %s" % total_flights
+    print "Total seats:                     %s" % str(total_seats)
+    print "Total flow:                      %s" % str(total_flow)
+    print "Total flights:                   %s" % str(total_flights)
     print "_________________________________________________________________\n"
-    print "AC1:                             %s" % aircraft_dict['Amount'][0]
-    print "AC2:                             %s" % aircraft_dict['Amount'][1]
-    print "AC3:                             %s" % aircraft_dict['Amount'][2]
-    print "AC4:                             %s" % aircraft_dict['Amount'][3]
-    print "AC5:                             %s" % aircraft_dict['Amount'][4]
+    print "AC1:                             %s" % str(aircraft_dict['Amount'][0])
+    print "AC2:                             %s" % str(aircraft_dict['Amount'][1])
+    print "AC3:                             %s" % str(aircraft_dict['Amount'][2])
+    print "AC4:                             %s" % str(aircraft_dict['Amount'][3])
+    print "AC5:                             %s" % str(aircraft_dict['Amount'][4])
 
 
 def print_tables():

@@ -101,11 +101,11 @@ def market_share(frequency,i,j):
                     fs1 = f_swiss_indir
                     fs2 = f_indir
         if a == 0 and b == 0:
-            print 'i = %s, j = %s, a = %s , b = %s' %(i,j,a,b)
+            #print 'i = %s, j = %s, a = %s , b = %s' %(i,j,a,b)
             return 1
         else:
             #return marketshare
-            print 'i = %s, j=%s, a = %s , b = %s' %(i,j,a,b)
+            #print 'i = %s, j=%s, a = %s , b = %s' %(i,j,a,b)
             return (pow(fs1,a)/(pow(fs1,a) + pow(fs2,b)))
     else:
         return 1
@@ -490,7 +490,7 @@ def iteration(reachable_demand):
                                    names=iteration_constraint_names)
 
     print 'added constraints'
-    problem.parameters.timelimit.set(120.0)
+    problem.parameters.timelimit.set(6000.0)
     print 'start solving'
     problem.solve()
     print problem.solution.get_status()
@@ -588,7 +588,7 @@ def kpi(solution, nodes, num_fleet):
     print "Profit:                          %s" % profit
     print "_________________________________________________________________\n"
     print "ASK:                             %s" % ask
-    print "RPK:                             %s" % rpk
+    print "RPK:                             %s" % str(rpk)
     print "RASK (excl. subsidy):            %s" % rask_1
     print "RASK (incl. subsidy):            %s" % rask_2
     print "CASK:                            %s" % cask

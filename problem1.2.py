@@ -145,6 +145,8 @@ def binary_index_finder(n):
 #OBJECTIVE FUNCTION
 objective = [0] * (len(dv_names))
 for dv in ['x', 'w', 'z', 'b']:
+    #Number of aircraft is not added as decision variable, thus to arrive at the actual objective value including the
+    #lease costs, this needs to be subtracted after running.
     #assign bonus subsidy coefficient
     if dv == 'b':
         for s in subsidy_airports:
